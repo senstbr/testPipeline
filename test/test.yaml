@@ -1,0 +1,101 @@
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates the WebApi instances and load balancer
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  LoadBalancerSg:
+    Type: AWS::EC2::SecurityGroup::Id
+  Subnet1:
+      Description: Subnet ID for server
+      Type: AWS::EC2::Subnet::Id
+  Subnet2:
+      Description: Subnet ID for server
+      Type: AWS::EC2::Subnet::Id
+  WebApiSg:
+    Type: AWS::EC2::SecurityGroup::Id
+  InstanceType:
+    Type: String
+  KeyPair:
+    Type: AWS::EC2::KeyPair::KeyName
+  ImageId:
+    Type: AWS::EC2::Image::Id
+
+Resources:
+
+  DevApiInternalTargetGroup2:
+    Properties:
+      HealthCheckPath: /api/docs/help
+      HealthCheckProtocol: HTTP
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      Targets:
+      - Id:
+          Ref: WebApi01
+      - Id:
+          Ref: WebApi02
+      VpcId:
+        Ref: VpcId
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+
+  DevApiInternalListener2:
+    Properties:
+      DefaultActions:
+      - TargetGroupArn:
+          Ref: DevApiInternalTargetGroup2
+        Type: forward
+      LoadBalancerArn:
+        Ref: DevApiInternalLoadBalancer
+      Port: 80
+      Protocol: HTTP
+    Type: AWS::ElasticLoadBalancingV2::Listener
+
+  DevApiInternalLoadBalancer:
+    Properties:
+      IpAddressType: ipv4
+      LoadBalancerAttributes:
+      - Key: idle_timeout.timeout_seconds
+        Value: '180'
+      Scheme: internal
+      SecurityGroups:
+      - Ref: LoadBalancerSg
+      Subnets:
+      - Ref: Subnet1
+      - Ref: Subnet2
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+
+  WebApi01:
+    Properties:
+      DisableApiTermination: false
+      ImageId:
+        Ref: ImageId
+      InstanceType:
+        Ref: InstanceType
+      KeyName:
+        Ref: KeyPair
+      SecurityGroupIds:
+      - Ref: WebApiSg
+      SubnetId:
+        Ref: Subnet1
+      Tags:
+      - Key: Name
+        Value: WebApi01
+    Type: AWS::EC2::Instance
+  WebApi02:
+    Properties:
+      DisableApiTermination: false
+      ImageId:
+        Ref: ImageId
+      InstanceType:
+        Ref: InstanceType
+      KeyName:
+        Ref: KeyPair
+      SecurityGroupIds:
+      - Ref: WebApiSg
+      SubnetId:
+        Ref: Subnet2
+      Tags:
+      - Key: Name
+        Value: WebApi02
+    Type: AWS::EC2::Instance

@@ -1,0 +1,138 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "Creates the infrastructure resources required for infra.ecp.shared.sfccbucket",
+  "Parameters" : {
+    "ApplicationName": {
+      "Type": "String",
+      "Description": "SFCC Read Bucket"
+    },
+    "Environment": {
+      "Type": "String",
+      "AllowedValues": [
+        "sandbox",
+        "test",
+        "cert",
+        "qa",
+        "prod"
+      ],
+      "Description": "Choose the environment configuration.",
+      "ConstraintDescription": "Choose from sandbox, qa, cert, or prod"
+    }
+  },
+  "Conditions" : {
+      "CreateSFCCBucketPolicy" : {"Fn::Not" : [{"Fn::Equals" : [ {"Ref" : "Environment"}, "test" ]}]}
+    },
+  "Resources" : {
+    "SFCCOrderSNSTopic": {
+      "Type" : "AWS::SNS::Topic",
+      "Properties" : {
+        "DisplayName" : "SFCCOrderSNSTopic",
+        "TopicName" : { "Fn::Sub": "gs-us1-${Environment}-${ApplicationName}-SFCCOrderSNSTopic" }
+      }
+    },
+    "ISPUOrderSNSTopic": {
+      "Type" : "AWS::SNS::Topic",
+      "Properties" : {
+        "DisplayName" : "ISPUOrderSNSTopic",
+        "TopicName" : { "Fn::Sub": "gs-us1-${Environment}-${ApplicationName}-ISPUOrderSNSTopic" }
+      }
+    },
+    "SFCCOrderSNSTopicPolicy":{
+      "Type":"AWS::SNS::TopicPolicy",
+      "Properties":{
+        "PolicyDocument":{
+          "Id":"SFCCOrderSNSTopicPolicy",
+          "Version":"2012-10-17",
+          "Statement":[
+            {
+              "Sid": "_sfcc_topic_0",
+              "Effect":"Allow",
+              "Principal": {
+                    "AWS" : "*"
+                  },
+              "Action":[
+                "SNS:Publish"
+              ],
+              "Resource":"*",
+              "Condition":{
+                "ArnLike":{
+                "aws:SourceArn": { "Fn::Join": [ "", [ "arn:aws:s3:::", "gs-us1-import-test-application"]] }
+                }
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Principal" : {
+                    "AWS" : "*"
+                  },
+              "Action": [
+                "SNS:Publish"
+              ],
+              "Resource": "*"
+            }
+          ]
+        },
+        "Topics":[
+          {
+            "Ref":"SFCCOrderSNSTopic"
+          }
+        ]
+      }
+    },
+    "ISPUOrderSNSTopicPolicy":{
+      "Type":"AWS::SNS::TopicPolicy",
+      "Properties":{
+        "PolicyDocument":{
+          "Id":"ISPUOrderSNSTopicPolicy",
+          "Version":"2012-10-17",
+          "Statement":[
+            {
+              "Sid": "_ispu_topic_0",
+              "Effect":"Allow",
+              "Principal": {
+                    "AWS" : "*"
+                  },
+              "Action":[
+                "SNS:Publish"
+              ],
+              "Resource":"*",
+              "Condition":{
+                "ArnLike":{
+                  "aws:SourceArn": { "Fn::Join": [ "", [ "arn:aws:s3:::", "gs-us1-import-test-application"]] }
+                }
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Principal" : {
+                    "AWS" : "*"
+                  },
+              "Action": [
+                "SNS:Subscribe",
+                "SNS:Receive"
+              ],
+              "Resource": "*"
+            }
+          ]
+        },
+        "Topics":[
+          {
+            "Ref":"ISPUOrderSNSTopic"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+      "SFCCOrderSNSTopicArn": {
+        "Description": "SFCC Order SNSTopic Arn",
+        "Value": { "Ref": "SFCCOrderSNSTopic" },
+        "Export" : { "Name" : "SFCCOrderSNSTopic" }
+      },
+      "ISPUOrderSNSTopicArn": {
+        "Description": "ISPU Order SNSTopic Arn",
+        "Value": { "Ref": "ISPUOrderSNSTopic" },
+        "Export" : { "Name" : "ISPUOrderSNSTopic" }
+      }
+  }
+}

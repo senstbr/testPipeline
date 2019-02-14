@@ -1,0 +1,159 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "Creates the infrastructure resources required for infra.ecp.shared.sfccbucket",
+  "Parameters" : {
+    "ApplicationName": {
+      "Type": "String",
+      "Description": "SFCC Read Bucket"
+    },
+    "Environment": {
+      "Type": "String",
+      "AllowedValues": [
+        "sandbox",
+        "test",
+        "cert",
+        "qa",
+        "prod"
+      ],
+      "Description": "Choose the environment configuration.",
+      "ConstraintDescription": "Choose from sandbox, qa, cert, or prod"
+    }
+  },
+  "Conditions" : {
+      "CreateSFCCBucketPolicy" : {"Fn::Not" : [{"Fn::Equals" : [ {"Ref" : "Environment"}, "test" ]}]}
+    },
+  "Resources" : {
+    "SFCCImportBucket" : {
+      "Type" : "AWS::S3::Bucket",
+      "Properties" : {
+        "AccessControl" : "Private",
+        "BucketName" : { "Fn::Sub": "gs-us1-import-${Environment}-${ApplicationName}" },
+        "LifecycleConfiguration":{
+          "Rules":[
+            {
+              "Id":"SFCCImportExpirationRule",
+              "Status":"Enabled",
+              "ExpirationInDays":"30"
+            }
+          ]
+        },
+        "NotificationConfiguration":{
+          "TopicConfigurations":[
+            {
+              "Event":"s3:ObjectCreated:Put",
+              "Filter":{
+                "S3Key":{
+                  "Rules": [
+                    {
+                      "Name": "prefix",
+                      "Value": "ECP_Orders/"
+                    }
+                  ]
+                }
+              },
+              "Topic":{ "Fn::ImportValue": "SFCCOrderSNSTopic" }
+            },
+            {
+              "Event":"s3:ObjectCreated:Put",
+              "Filter":{
+                "S3Key":{
+                  "Rules": [
+                    {
+                      "Name": "prefix",
+                      "Value": "ECP_ISPU/"
+                    }
+                  ]
+                }
+              },
+              "Topic":{ "Fn::ImportValue":  "ISPUOrderSNSTopic" }
+            }
+          ]
+        }
+      }
+    },
+    "SFCCImportBucketPolicy" : {
+      "Type" : "AWS::S3::BucketPolicy",
+      "Properties" : {
+          "PolicyDocument" : {
+            "Id" : "SFCCImportPolicy",
+            "Version": "2012-10-17",
+            "Statement" : [
+                {
+                  "Sid" : "SFCCBucketImportWritePolicy",
+                  "Action" : [
+                      "s3:ListBucket",
+                      "s3:GetBucket*",
+                      "s3:GetObject*",
+                      "s3:PutObject*",
+                      "s3:DeleteObject*"
+                  ],
+                  "Effect" : "Allow",
+                  "Resource" :
+                    [
+                      { "Fn::Sub": "arn:aws:s3:::${SFCCImportBucket}/*" },
+                      { "Fn::Sub": "arn:aws:s3:::${SFCCImportBucket}" }
+                    ],
+                  "Principal" : {
+                    "AWS" : ["*"]
+                  }
+              }
+            ]
+          },
+          "Bucket" : { "Ref" : "SFCCImportBucket" }
+      }
+    },
+    "SFCCBucket" : {
+      "Type" : "AWS::S3::Bucket",
+      "Properties" : {
+        "AccessControl" : "Private",
+        "BucketName" : { "Fn::Sub": "gs-us1-${Environment}-${ApplicationName}" },
+        "LifecycleConfiguration":{
+          "Rules":[
+            {
+              "Id":"SFCCExpirationRule",
+              "Status":"Enabled",
+              "ExpirationInDays":"30"
+            }
+          ]
+        }
+      }
+    },
+    "SFCCBucketPolicy" : {
+      "Type" : "AWS::S3::BucketPolicy",
+      "Properties" : {
+          "PolicyDocument" : {
+            "Id" : "SFCCPolicy",
+            "Version": "2012-10-17",
+            "Statement" : [
+                {
+                  "Sid" : "SFCCBucketWritePolicy",
+                  "Action" : [
+                      "s3:ListBucket",
+                      "s3:GetBucket*",
+                      "s3:GetObject*",
+                      "s3:PutObject*",
+                      "s3:DeleteObject*"
+                  ],
+                  "Effect" : "Allow",
+                  "Resource" :
+                     [
+                      { "Fn::Sub": "arn:aws:s3:::${SFCCBucket}/*" },
+                      { "Fn::Sub": "arn:aws:s3:::${SFCCBucket}" }
+                    ],
+                  "Principal" : {
+                    "AWS" : [
+                      { "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root" }
+
+                    ]
+                  }
+              }
+            ]
+          },
+          "Bucket" : { "Ref" : "SFCCBucket" }
+      }
+    }
+  },
+  "Outputs": {
+
+  }
+}

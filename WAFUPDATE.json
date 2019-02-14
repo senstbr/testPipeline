@@ -1,0 +1,31 @@
+{
+
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Resources" :{
+
+    "MyWebACL": {
+
+          "Type": "AWS::WAF::WebACL",
+
+          "Properties": {
+
+            "Name": "WebACL to with three rules",
+
+            "DefaultAction": {
+
+              "Type": "BLOCK"
+
+            },
+
+            "MetricName" : "MyWebACL"
+
+
+
+  }
+
+}
+
+}
+
+}

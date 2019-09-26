@@ -1,5 +1,5 @@
 version: 0.0
 os: linux
 files:
-  - source: /test
-destination: /var/python/Team
+  - source: /
+    destination: /var/python/Team
